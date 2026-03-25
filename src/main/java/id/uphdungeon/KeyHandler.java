@@ -50,19 +50,19 @@ public class KeyHandler implements KeyListener {
       rightPressed = false;
     }
 
-    // Trigger move only when all movement keys are released
+    // triggers move only when all movement keys are released
     if (!upPressed && !downPressed && !leftPressed && !rightPressed) {
-        if (wasUpPressed || wasDownPressed || wasLeftPressed || wasRightPressed) {
-            moveTriggered = true;
-        }
+      if (wasUpPressed || wasDownPressed || wasLeftPressed || wasRightPressed) {
+        moveTriggered = true;
+      }
     }
   }
 
   public void consumeMove() {
-      moveTriggered = false;
-      wasUpPressed = false;
-      wasDownPressed = false;
-      wasLeftPressed = false;
-      wasRightPressed = false;
+    moveTriggered = false;
+    wasUpPressed = false;
+    wasDownPressed = false;
+    wasLeftPressed = false;
+    wasRightPressed = false;
   }
 }

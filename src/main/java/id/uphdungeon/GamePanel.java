@@ -11,11 +11,10 @@ import java.util.ArrayList;
 import javax.swing.JPanel;
 
 public class GamePanel extends JPanel implements Runnable {
-  public final int originalTileSize = 16; // 16x16 tile size
-  public final int scale = 3; // zoom or scale up character pixel size
+  public final int originalTileSize = 16;
+  public final int scale = 3;
   public final int tileSize = originalTileSize * scale;
 
-  // Screen Settings
   public final int maxScreenCol = 18;
   public final int maxScreenRow = 14;
   public final int screenWidth = tileSize * maxScreenCol;
@@ -31,8 +30,10 @@ public class GamePanel extends JPanel implements Runnable {
   public GamePanel() {
     this.setPreferredSize(new Dimension(screenWidth, screenHeight));
     this.setBackground(Color.BLACK);
-    this.setDoubleBuffered(true); // Improves rendering performance
-    this.setFocusable(true); // Allows the panel to receive key inputs
+    // improves rendering performance
+    this.setDoubleBuffered(true);
+    // allows the panel to receive key inputs
+    this.setFocusable(true);
     this.addKeyListener(keyHandler);
 
     enemies.add(new Enemy(this, tileSize * 5, tileSize * 5, 1, 0, Color.RED));
@@ -64,15 +65,14 @@ public class GamePanel extends JPanel implements Runnable {
     double nextDrawTime = System.nanoTime() + drawInterval;
 
     while (gameThread != null) {
-      // 1. UPDATE: Update information such as character positions
       update();
 
-      // 2. DRAW: Draw the screen with the updated information
       repaint();
 
       try {
         double remainingTime = nextDrawTime - System.nanoTime();
-        remainingTime = remainingTime / 1000000; // convert to milliseconds
+        // convert to milliseconds
+        remainingTime = remainingTime / 1000000;
 
         if (remainingTime < 0) remainingTime = 0;
 
@@ -99,7 +99,6 @@ public class GamePanel extends JPanel implements Runnable {
   public void advanceTurn() {
     if (player.isDead) return;
 
-    // This is called each time the player makes an action/move.
     for (Enemy e : enemies) {
         e.takeTurn();
     }
@@ -110,7 +109,6 @@ public class GamePanel extends JPanel implements Runnable {
     super.paintComponent(g);
     Graphics2D g2 = (Graphics2D) g;
 
-    // Draw Grid
     g2.setColor(Color.DARK_GRAY);
     for (int i = 0; i < maxScreenCol; i++) {
         g2.drawLine(i * tileSize, 0, i * tileSize, screenHeight);
@@ -132,6 +130,6 @@ public class GamePanel extends JPanel implements Runnable {
         g2.drawString("GAME OVER", screenWidth/2 - 40, screenHeight/2);
     }
 
-    g2.dispose(); // Housekeeping to save memory
+    g2.dispose();
   }
 }
