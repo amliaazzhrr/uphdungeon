@@ -1,6 +1,8 @@
 package id.uphdungeon.entity;
 
 import id.uphdungeon.GamePanel;
+import id.uphdungeon.ui.DamageIndicator;
+
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;

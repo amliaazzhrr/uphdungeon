@@ -1,4 +1,4 @@
-package id.uphdungeon.entity;
+package id.uphdungeon.ui;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -8,7 +8,7 @@ import java.awt.Graphics2D;
 public class DamageIndicator {
   String text;
   int x, y;
-  int life; // lifetime in frames
+  int lifetimeFrame;
   float alpha = 1.0f;
   int yOffset = 0;
 
@@ -16,16 +16,16 @@ public class DamageIndicator {
     this.text = text;
     this.x = x;
     this.y = y;
-    this.life = 60; // 1 second at 60 FPS
+    this.lifetimeFrame = 60; // 1 s @ 60 FPS
   }
 
   public void update() {
-    life--;
+    lifetimeFrame--;
     yOffset++;
     y--;
 
-    if (life < 30) {
-      alpha = life / 30.0f;
+    if (lifetimeFrame < 30) {
+      alpha = lifetimeFrame / 30.0f;
     }
   }
 
@@ -33,7 +33,7 @@ public class DamageIndicator {
     g2.setFont(new Font("Arial", Font.BOLD, 14));
     int stringWidth = g2.getFontMetrics().stringWidth(text);
 
-    // center the text
+    // center text
     int drawX = x - (stringWidth / 2);
 
     g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
@@ -43,6 +43,6 @@ public class DamageIndicator {
   }
 
   public boolean isFinished() {
-    return life <= 0;
+    return lifetimeFrame <= 0;
   }
 }

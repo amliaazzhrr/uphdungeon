@@ -9,8 +9,8 @@ public abstract class Enemy extends Entity {
   public boolean isMoving = false;
   public int targetX, targetY;
 
-  public int dirX; // 1 (right), -1 (left), or 0
-  public int dirY; // 1 (down), -1 (up), or 0
+  public int dirX; // kanan: 1, kiri: -1, netral: 0
+  public int dirY; // bawah: 1, atas: -1, netral: 0
   public Color color;
 
   private Runnable intent = null;
@@ -36,7 +36,8 @@ public abstract class Enemy extends Entity {
     this.dirY = dirY;
     this.color = color;
 
-    this.initiative = new Random().nextInt(9) + 1; // Initiative from 1 to 9
+    // initiative dari 1 ke 9
+    this.initiative = new Random().nextInt(9) + 1;
 
     this.maxHealth = maxHealth;
     this.health = maxHealth;
@@ -47,24 +48,26 @@ public abstract class Enemy extends Entity {
   @Override
   public void determineIntent(GamePanel gamePanel) {
     if (intent == null && !isMoving && !isDead) {
-      // check if player is adjacent
+      // cek player di sebelah musuh ini
       Player player = gamePanel.getPlayer();
       if (!player.isDead) {
+        int deltaX = Math.abs(player.x - this.x);
+        int deltaY = Math.abs(player.y - this.y);
+
         if (
-          (x + gamePanel.tileSize == player.x && y == player.y) ||
-          (x - gamePanel.tileSize == player.x && y == player.y) ||
-          (x == player.x && y + gamePanel.tileSize == player.y) ||
-          (x == player.x && y - gamePanel.tileSize == player.y)
+          deltaX <= gamePanel.tileSize &&
+          deltaY <= gamePanel.tileSize &&
+          (deltaX != 0 || deltaY != 0)
         ) {
           intent = () -> this.attack(player);
-          return; // end turn after deciding to attack
+          return;
         }
       }
 
       int newTargetX = x + (dirX * gamePanel.tileSize);
       int newTargetY = y + (dirY * gamePanel.tileSize);
 
-      // Simple bounds checking to reverse direction
+      // cek arah sebaliknya
       if (
         newTargetX < 0 ||
         newTargetX + gamePanel.tileSize > gamePanel.screenWidth
@@ -80,18 +83,18 @@ public abstract class Enemy extends Entity {
         newTargetY = y + (dirY * gamePanel.tileSize);
       }
 
-      // Check for collision at target location
+      // collission check at target location
       Entity targetEntity = gamePanel.getEntityAt(newTargetX, newTargetY);
 
       if (targetEntity instanceof Player) {
         intent = () -> this.attack(targetEntity);
       } else if (targetEntity == null) {
-        // It's null, so we move.
+        // grid kosong, bisa gerak
         this.targetX = newTargetX;
         this.targetY = newTargetY;
         intent = () -> isMoving = true;
       }
-      // If targetEntity is an Enemy, do nothing.
+      // kalo di grid target sesama musuh, ga ngapa2in
     }
   }
 
@@ -150,7 +153,7 @@ public abstract class Enemy extends Entity {
       g2.fillRect(x + offset, y + offset, spriteSize, spriteSize);
 
       if (!isDead) {
-        // Draw health bar only for living enemies
+        // health bar buat musuh hidup
         g2.setColor(Color.RED);
         g2.fillRect(x + offset, y + offset - 5, spriteSize, 4);
         g2.setColor(Color.GREEN);

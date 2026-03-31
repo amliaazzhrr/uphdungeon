@@ -17,12 +17,11 @@ public class Player extends Entity {
     super(gamePanel);
     this.keyH = keyH;
 
-    // align with grid
     this.x = gamePanel.tileSize * 2;
     this.y = gamePanel.tileSize * 2;
 
     this.speed = 4;
-    this.initiative = 10; // Player has high initiative
+    this.initiative = 10;
 
     this.maxHealth = 20;
     this.health = 20;
@@ -69,16 +68,16 @@ public class Player extends Entity {
         nextX += gamePanel.tileSize;
       }
 
-      // cancel contradicting directions
+      // cancel kalo pencet arahnya bertubrukan
       if (keyH.wasUpPressed && keyH.wasDownPressed) nextY = y;
       if (keyH.wasLeftPressed && keyH.wasRightPressed) nextX = x;
 
-      // only start initiative if player changed position
+      // initiative start only if player changed position
       if (nextX != x || nextY != y) {
         Entity targetEntity = gamePanel.getEntityAt(nextX, nextY);
 
         if (targetEntity != null) {
-          // if enemy exists, attack enemy
+          // if enemy exists attack enemy
           if (targetEntity instanceof Enemy) {
             intent = () -> this.attack(targetEntity);
           }
@@ -114,7 +113,7 @@ public class Player extends Entity {
       g2.setColor(Color.WHITE);
       g2.fillRect(x + offset, y + offset, spriteSize, spriteSize);
 
-      // health bar above player
+      // health bar
       g2.setColor(Color.RED);
       g2.fillRect(x + offset, y + offset - 5, spriteSize, 4);
       g2.setColor(Color.GREEN);

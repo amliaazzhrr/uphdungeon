@@ -37,7 +37,6 @@ public class GamePanel extends JPanel implements Runnable {
     START_ROUND,
     PLAYER_TURN,
     ENEMY_TURN,
-    GAME_OVER,
     END_ROUND,
   }
 
@@ -46,8 +45,8 @@ public class GamePanel extends JPanel implements Runnable {
   public GamePanel() {
     this.setPreferredSize(new Dimension(screenWidth, screenHeight));
     this.setBackground(Color.BLACK);
-    // improves rendering performance
     this.setDoubleBuffered(true);
+
     // allows the panel to receive key inputs
     this.setFocusable(true);
     this.addKeyListener(keyHandler);
@@ -79,7 +78,7 @@ public class GamePanel extends JPanel implements Runnable {
 
   @Override
   public void run() {
-    double drawInterval = 1000000000 / FPS; // 0.0166 seconds
+    double drawInterval = 1000000000 / FPS;
     double nextDrawTime = System.nanoTime() + drawInterval;
 
     while (gameThread != null) {
@@ -106,29 +105,29 @@ public class GamePanel extends JPanel implements Runnable {
       e.updateAnimations();
     }
     if (actionInProgress) {
-      // an animation is playing, just update all entities for animation
+      // biar animasi semua Entity tetep jalan walau ga ada initiative
       for (Entity e : entities) e.update();
 
-      // check if all animations are done
-      boolean allDone = true;
+      boolean isAnimationDone = true;
       for (Entity e : entities) {
         if (e instanceof Player && ((Player) e).isMoving) {
-          allDone = false;
+          isAnimationDone = false;
           break;
         }
         if (e instanceof Enemy && ((Enemy) e).isMoving) {
-          allDone = false;
+          isAnimationDone = false;
           break;
         }
       }
-      if (allDone) {
+
+      if (isAnimationDone) {
         actionInProgress = false;
-        // The action is done, now we can proceed with the turn logic.
+        // action done, continue turn logics
         turnIndex++;
         processNextTurn();
       }
-    } else if (gameState != GameState.GAME_OVER) {
-      // No animation, process game logic
+    } else {
+      // no animation, continue game logic
       switch (gameState) {
         case START_ROUND:
           turnOrder.clear();
@@ -145,7 +144,7 @@ public class GamePanel extends JPanel implements Runnable {
             if (player.isMoving) {
               actionInProgress = true;
             } else {
-              // it was an attack or something instant
+              // kalau attack atau action instant, langsung proses turn
               turnIndex++;
               processNextTurn();
             }
@@ -165,14 +164,7 @@ public class GamePanel extends JPanel implements Runnable {
           }
           break;
         case END_ROUND:
-          if (player.isDead) {
-            gameState = GameState.GAME_OVER;
-          } else {
-            gameState = GameState.START_ROUND;
-          }
-          break;
-        case GAME_OVER:
-          // No updates, just repaint the game over screen
+          gameState = GameState.START_ROUND;
           break;
       }
     }
