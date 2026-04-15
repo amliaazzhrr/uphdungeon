@@ -38,7 +38,8 @@ public class Player extends Entity {
     this.x = gamePanel.tileSize * 2;
     this.y = gamePanel.tileSize * 2;
 
-    this.speed = 4;
+    // comment dulu, handled di super biar lebih cepet
+    // this.speed = 4;
     this.initiative = 10;
 
     this.maxHealth = 30;

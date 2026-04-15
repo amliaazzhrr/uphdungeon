@@ -31,7 +31,8 @@ public abstract class Enemy extends Entity {
     this.y = startY;
     this.targetX = startX;
     this.targetY = startY;
-    this.speed = 4;
+    // comment dulu, handled di super biar lebih cepet
+    // this.speed = 4;
     this.dirX = dirX;
     this.dirY = dirY;
     this.color = color;

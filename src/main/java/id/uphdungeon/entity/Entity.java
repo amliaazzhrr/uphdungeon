@@ -11,7 +11,8 @@ import java.util.Random;
 public abstract class Entity {
   protected GamePanel gamePanel;
   public int x, y;
-  public int speed;
+  // kecepatan animasi
+  public int speed = 10;
   public int initiative;
 
   public int maxHealth;
