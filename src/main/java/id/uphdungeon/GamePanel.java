@@ -74,6 +74,13 @@ public class GamePanel extends JPanel implements Runnable {
       public void mouseWheelMoved(MouseWheelEvent e) {
         activityLog.handleMouseWheel(e.getWheelRotation());
       }
+
+      @Override
+      public void mousePressed(MouseEvent e) {
+        if (gameState == GameState.PLAYER_TURN && !actionInProgress) {
+          handleMouseClick(e.getX(), e.getY());
+        }
+      }
     };
     this.addMouseListener(mouseAdapter);
     this.addMouseMotionListener(mouseAdapter);
@@ -86,6 +93,15 @@ public class GamePanel extends JPanel implements Runnable {
     entities.add(new Rat(this, tileSize * 10, tileSize * 10, -1, -1));
 
     addLogMessage("Welcome to UPH Dungeon!", Color.YELLOW);
+  }
+
+  public void handleMouseClick(int mouseX, int mouseY) {
+    int col = mouseX / tileSize;
+    int row = mouseY / tileSize;
+
+    if (col >= 0 && col < maxScreenCol && row >= 0 && row < maxScreenRow) {
+      player.setPath(col, row);
+    }
   }
 
   public void addLogMessage(String text, Color color) {
