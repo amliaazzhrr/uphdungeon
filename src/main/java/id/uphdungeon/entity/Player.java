@@ -1,22 +1,36 @@
 package id.uphdungeon.entity;
 
-import id.uphdungeon.GamePanel;
-import id.uphdungeon.KeyHandler;
-import id.uphdungeon.utils.PathFinder;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
+import id.uphdungeon.GamePanel;
+import id.uphdungeon.KeyHandler;
+import id.uphdungeon.entity.animation.Animation;
+import id.uphdungeon.entity.animation.PlayerAnimationState;
+import id.uphdungeon.entity.animation.PlayerSpriteManager;
+import id.uphdungeon.utils.PathFinder;
+
+// Controller for the player character
 public class Player extends Entity {
   KeyHandler keyH;
 
   public boolean isMoving = false;
   public int targetX, targetY;
-
   private Runnable intent = null;
   private PathFinder.Path currentPath = null;
   private Entity targetEnemy = null;
 
+  // Animation state
+  private final PlayerSpriteManager spriteManager = new PlayerSpriteManager();
+  private PlayerAnimationState currentState = PlayerAnimationState.IDLE;
+  private Animation currentAnimation;
+  private boolean attackAnimationPending = false; // for returning to idle
+  private boolean facingLeft = false; // attack defualt direction Right
+
+  // constructor for player, sets initial position, stats, and idle animation
   public Player(GamePanel gamePanel, KeyHandler keyH) {
     super(gamePanel);
     this.keyH = keyH;
@@ -34,17 +48,61 @@ public class Player extends Entity {
 
     this.targetX = this.x;
     this.targetY = this.y;
+
+    // Initialise with idle animation
+    currentAnimation = spriteManager.getAnimation(PlayerAnimationState.IDLE);
   }
 
+  // Method to trigger posisition atttack animation Right or Left
+  public void triggerAttackAnimation(Entity target) {
+
+    boolean attackLeft = (target.x < x) || (target.x == x && facingLeft);
+    PlayerAnimationState attackState = attackLeft ? PlayerAnimationState.ATTACK_LEFT
+        : PlayerAnimationState.ATTACK_RIGHT;
+    transitionTo(attackState);
+    attackAnimationPending = true;
+  }
+
+  // Method direction walk animation
+  private PlayerAnimationState resolveWalkState() {
+    int dx = targetX - x;
+    int dy = targetY - y;
+
+    // Condition for facing direction: if horizontal distance is greater
+    // than vertical face left/right and otherwise face up/down
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      facingLeft = dx < 0;
+      return facingLeft ? PlayerAnimationState.WALK_LEFT : PlayerAnimationState.WALK_RIGHT;
+    } else {
+      return dy < 0 ? PlayerAnimationState.WALK_UP : PlayerAnimationState.WALK_DOWN;
+    }
+  }
+
+  // Method to handle walk animation transitions to Walk, Attack etc
+  private void transitionTo(PlayerAnimationState newState) {
+    if (newState == currentState)
+      return;
+    currentState = newState;
+    currentAnimation = spriteManager.getAnimation(newState);
+    currentAnimation.reset();
+  }
+
+  // Entity override
+  // Called every frame by GamePanel.update() for update position
+  // base on current path or target
   @Override
   public void update() {
     if (isMoving) {
-      if (x < targetX) x += speed;
-      if (x > targetX) x -= speed;
-      if (y < targetY) y += speed;
-      if (y > targetY) y -= speed;
+      if (x < targetX)
+        x += speed;
+      if (x > targetX)
+        x -= speed;
+      if (y < targetY)
+        y += speed;
+      if (y > targetY)
+        y -= speed;
 
-      // snap to target if very close to prevent jitter
+      // Snap to target when close enough to prevent jitter
       if (Math.abs(x - targetX) < speed && Math.abs(y - targetY) < speed) {
         x = targetX;
         y = targetY;
@@ -53,24 +111,76 @@ public class Player extends Entity {
     }
   }
 
+  // Method update animation handles attack animation priority and walk direction
+  @Override
+  public void updateAnimations() {
+    super.updateAnimations(); // handles damage indicators & fading
+
+    if (attackAnimationPending) {
+      // Keep play attack animation until it finishes
+      currentAnimation.update();
+      if (currentAnimation.isFinished()) {
+        attackAnimationPending = false;
+        transitionTo(PlayerAnimationState.IDLE);
+      }
+      return;
+    }
+
+    // If not attacking then walk or idle state
+    if (isMoving) {
+      transitionTo(resolveWalkState());
+    } else {
+      transitionTo(PlayerAnimationState.IDLE);
+    }
+
+    currentAnimation.update();
+  }
+
+  // Draw method handles mirroring walk-right, fallback rectangle, health bar, and
+  // indicators
+  @Override
+  public void draw(Graphics2D g2) {
+    if (isDead) {
+      drawIndicators(g2);
+      return;
+    }
+
+    BufferedImage frame = currentAnimation.getCurrentFrame();
+
+    if (frame != null) {
+      int drawX = x;
+      int drawY = y;
+      int size = gamePanel.tileSize;
+
+      g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+
+      g2.drawImage(frame, drawX, drawY, size, size, null);
+    } else {
+      // Display white rectangle if sprites are missing
+      int spriteSize = (int) (gamePanel.tileSize * 0.8);
+      int offset = (gamePanel.tileSize - spriteSize) / 2;
+      g2.setColor(Color.WHITE);
+      g2.fillRect(x + offset, y + offset, spriteSize, spriteSize);
+    }
+
+    drawHealthBar(g2);
+    drawIndicators(g2);
+  }
+
   public void setPath(int col, int row) {
-    int fromIndex =
-      (x / gamePanel.tileSize) +
-      (y / gamePanel.tileSize) * gamePanel.maxScreenCol;
+    int fromIndex = (x / gamePanel.tileSize) + (y / gamePanel.tileSize) * gamePanel.maxScreenCol;
     int toIndex = col + row * gamePanel.maxScreenCol;
 
-    if (fromIndex == toIndex) return;
+    if (fromIndex == toIndex)
+      return;
 
     // reset action
     currentPath = null;
     targetEnemy = null;
 
-    Entity clickedEntity = gamePanel.getEntityAt(
-      col * gamePanel.tileSize,
-      row * gamePanel.tileSize
-    );
+    Entity clickedEntity = gamePanel.getEntityAt(col * gamePanel.tileSize, row * gamePanel.tileSize);
 
-    if (clickedEntity != null && clickedEntity instanceof Enemy) {
+    if (clickedEntity instanceof Enemy) {
       targetEnemy = clickedEntity;
     } else {
       boolean[] passable = getPassableMap();
@@ -80,17 +190,13 @@ public class Player extends Entity {
   }
 
   private boolean[] getPassableMap() {
-    boolean[] passable = new boolean[gamePanel.maxScreenCol *
-    gamePanel.maxScreenRow];
+    boolean[] passable = new boolean[gamePanel.maxScreenCol * gamePanel.maxScreenRow];
     Arrays.fill(passable, true);
     for (Entity e : gamePanel.entities) {
       if (!e.isDead && e != this) {
-        int index =
-          (e.x / gamePanel.tileSize) +
-          (e.y / gamePanel.tileSize) * gamePanel.maxScreenCol;
-        if (index >= 0 && index < passable.length) {
+        int index = (e.x / gamePanel.tileSize) + (e.y / gamePanel.tileSize) * gamePanel.maxScreenCol;
+        if (index >= 0 && index < passable.length)
           passable[index] = false;
-        }
       }
     }
     return passable;
@@ -106,39 +212,37 @@ public class Player extends Entity {
       targetEnemy = null;
 
       if (keyH.waitTriggered) {
-        intent = () -> {
-          gamePanel.addLogMessage("Player waited.", Color.CYAN);
-        };
+        intent = () -> gamePanel.addLogMessage("Player waited.", Color.CYAN);
+
       } else if (keyH.moveTriggered) {
         int nextX = x;
         int nextY = y;
 
-        if (keyH.wasUpPressed) {
+        if (keyH.wasUpPressed)
           nextY -= gamePanel.tileSize;
-        }
-        if (keyH.wasDownPressed) {
+        if (keyH.wasDownPressed)
           nextY += gamePanel.tileSize;
-        }
-        if (keyH.wasLeftPressed) {
+        if (keyH.wasLeftPressed)
           nextX -= gamePanel.tileSize;
-        }
-        if (keyH.wasRightPressed) {
+        if (keyH.wasRightPressed)
           nextX += gamePanel.tileSize;
-        }
 
         // cancel kalo pencet arahnya bertubrukan
-        if (keyH.wasUpPressed && keyH.wasDownPressed) nextY = y;
-        if (keyH.wasLeftPressed && keyH.wasRightPressed) nextX = x;
+        if (keyH.wasUpPressed && keyH.wasDownPressed)
+          nextY = y;
+        if (keyH.wasLeftPressed && keyH.wasRightPressed)
+          nextX = x;
 
         // initiative start only if player changed position
         if (nextX != x || nextY != y) {
           Entity targetEntity = gamePanel.getEntityAt(nextX, nextY);
 
-          if (targetEntity != null) {
+          if (targetEntity instanceof Enemy) {
             // if enemy exists attack enemy
-            if (targetEntity instanceof Enemy) {
-              intent = () -> this.attack(targetEntity);
-            }
+            intent = () -> {
+              triggerAttackAnimation(targetEntity);
+              this.attack(targetEntity);
+            };
           } else {
             this.targetX = nextX;
             this.targetY = nextY;
@@ -148,6 +252,7 @@ public class Player extends Entity {
       }
 
       keyH.consumeAction();
+
     } else if (targetEnemy != null) {
       if (targetEnemy.isDead) {
         targetEnemy = null;
@@ -161,23 +266,23 @@ public class Player extends Entity {
         // adjacent, attack
         // setelah itu stop ngejar
         final Entity enemyToAttack = targetEnemy;
-        intent = () -> this.attack(enemyToAttack);
+        intent = () -> {
+          triggerAttackAnimation(enemyToAttack);
+          this.attack(enemyToAttack);
+        };
         targetEnemy = null;
       } else {
         // not adjacent, one step to enemy
         boolean[] passable = getPassableMap();
         // temporarily make target tile passable
         // so we can move there
-        int targetIndex =
-          (targetEnemy.x / gamePanel.tileSize) +
-          (targetEnemy.y / gamePanel.tileSize) * gamePanel.maxScreenCol;
+        int targetIndex = (targetEnemy.x / gamePanel.tileSize)
+            + (targetEnemy.y / gamePanel.tileSize) * gamePanel.maxScreenCol;
         if (targetIndex >= 0 && targetIndex < passable.length) {
           passable[targetIndex] = true;
         }
 
-        int fromIndex =
-          (x / gamePanel.tileSize) +
-          (y / gamePanel.tileSize) * gamePanel.maxScreenCol;
+        int fromIndex = (x / gamePanel.tileSize) + (y / gamePanel.tileSize) * gamePanel.maxScreenCol;
         PathFinder.setMapSize(gamePanel.maxScreenCol, gamePanel.maxScreenRow);
         int nextIndex = PathFinder.getStep(fromIndex, targetIndex, passable);
 
@@ -194,7 +299,10 @@ public class Player extends Entity {
             // serang sekali
             // lalu menyudahi inisiatif
             final Entity enemyToAttack = targetEnemy;
-            intent = () -> this.attack(enemyToAttack);
+            intent = () -> {
+              triggerAttackAnimation(enemyToAttack);
+              this.attack(enemyToAttack);
+            };
             targetEnemy = null;
           } else {
             this.targetX = nextX;
@@ -206,16 +314,20 @@ public class Player extends Entity {
           targetEnemy = null;
         }
       }
+
     } else if (currentPath != null && !currentPath.isEmpty()) {
       int nextIndex = currentPath.peek();
       int nextX = (nextIndex % gamePanel.maxScreenCol) * gamePanel.tileSize;
       int nextY = (nextIndex / gamePanel.maxScreenCol) * gamePanel.tileSize;
 
       Entity targetEntity = gamePanel.getEntityAt(nextX, nextY);
-      if (targetEntity != null && targetEntity instanceof Enemy) {
+      if (targetEntity instanceof Enemy) {
         // attack, abis itu stop
         final Entity enemyToAttack = targetEntity;
-        intent = () -> this.attack(enemyToAttack);
+        intent = () -> {
+          triggerAttackAnimation(enemyToAttack);
+          this.attack(enemyToAttack);
+        };
         currentPath = null;
       } else if (targetEntity == null) {
         this.targetX = nextX;
@@ -241,23 +353,18 @@ public class Player extends Entity {
     return intent != null;
   }
 
-  @Override
-  public void draw(Graphics2D g2) {
-    if (!isDead) {
-      int spriteSize = (int) (gamePanel.tileSize * 0.8);
-      int offset = (gamePanel.tileSize - spriteSize) / 2;
+  private void drawHealthBar(Graphics2D g2) {
+    int barWidth = gamePanel.tileSize;
+    int barHeight = 4;
+    int barX = x;
+    int barY = y - barHeight - 2;
 
-      g2.setColor(Color.WHITE);
-      g2.fillRect(x + offset, y + offset, spriteSize, spriteSize);
-
-      // health bar
-      g2.setColor(Color.RED);
-      g2.fillRect(x + offset, y + offset - 5, spriteSize, 4);
-      g2.setColor(Color.GREEN);
-      int hpWidth = (int) (((double) health / maxHealth) * spriteSize);
-      g2.fillRect(x + offset, y + offset - 5, hpWidth, 4);
-    }
-
-    drawIndicators(g2);
+    // health bar
+    g2.setColor(Color.RED);
+    g2.fillRect(barX, barY, barWidth, barHeight);
+    g2.setColor(Color.GREEN);
+    int hpWidth = (int) (((double) health / maxHealth) * barWidth);
+    g2.fillRect(barX, barY, hpWidth, barHeight);
   }
+
 }
