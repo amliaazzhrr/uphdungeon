@@ -7,6 +7,7 @@ import id.uphdungeon.entity.Rat;
 import id.uphdungeon.entity.Skeleton;
 import id.uphdungeon.ui.ActivityLog;
 import id.uphdungeon.ui.DeathMessage;
+import id.uphdungeon.utils.TileManager;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -24,13 +25,16 @@ public class GamePanel extends JPanel implements Runnable {
   public final int tileSize = originalTileSize * scale;
 
   public final int maxScreenCol = 18;
-  public final int maxScreenRow = 14;
+  public final int maxScreenRow = 12;
   public final int screenWidth = tileSize * maxScreenCol;
   public final int screenHeight = tileSize * maxScreenRow;
   public final int FPS = 60;
 
   public KeyHandler keyHandler = new KeyHandler();
   private Thread gameThread;
+
+  // Tile manager for dungeon background rendering
+  private TileManager tile;
 
   private Player player;
   public ArrayList<Entity> entities = new ArrayList<>();
@@ -85,6 +89,9 @@ public class GamePanel extends JPanel implements Runnable {
     this.addMouseListener(mouseAdapter);
     this.addMouseMotionListener(mouseAdapter);
     this.addMouseWheelListener(mouseAdapter);
+
+    // Tile must be initialised before entities so the map is ready at first frame
+    tile = new TileManager(this);
 
     player = new Player(this, keyHandler);
     entities.add(player);
@@ -244,16 +251,19 @@ public class GamePanel extends JPanel implements Runnable {
     super.paintComponent(g);
     Graphics2D g2 = (Graphics2D) g;
 
-    g2.setColor(Color.DARK_GRAY);
+    // 1. Draw dungeon floor tiles as the background
+    tile.draw(g2);
 
-    for (int i = 0; i < maxScreenCol; i++) {
-      g2.drawLine(i * tileSize, 0, i * tileSize, screenHeight);
-    }
+    // 2. Draw grid lines on top of tiles for visual reference
+    // g2.setColor(Color.DARK_GRAY);
+    // for (int i = 0; i < maxScreenCol; i++) {
+    //   g2.drawLine(i * tileSize, 0, i * tileSize, screenHeight);
+    // }
+    // for (int i = 0; i < maxScreenRow; i++) {
+    //   g2.drawLine(0, i * tileSize, screenWidth, i * tileSize);
+    // }
 
-    for (int i = 0; i < maxScreenRow; i++) {
-      g2.drawLine(0, i * tileSize, screenWidth, i * tileSize);
-    }
-
+    // 3. Draw all entities on top of the floor
     for (Entity e : entities) {
       e.draw(g2);
     }
