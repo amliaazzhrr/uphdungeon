@@ -17,11 +17,12 @@ import id.uphdungeon.entity.Entity;
 import id.uphdungeon.entity.Player;
 import id.uphdungeon.entity.Rat;
 import id.uphdungeon.entity.Skeleton;
+import id.uphdungeon.potion.PotionManager;
 import id.uphdungeon.ui.ActivityLog;
 import id.uphdungeon.ui.DeathMessage;
+import id.uphdungeon.ui.RetryButton;
 import id.uphdungeon.ui.WaitButton;
 import id.uphdungeon.utils.TileManager;
-import id.uphdungeon.potion.PotionManager;
 
 public class GamePanel extends JPanel implements Runnable {
 
@@ -62,6 +63,7 @@ public class GamePanel extends JPanel implements Runnable {
   private final ActivityLog activityLog = new ActivityLog();
   private final DeathMessage deathMessage = new DeathMessage();
   private final WaitButton waitButton;
+  private final RetryButton retryButton;
 
   public GamePanel() {
     this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -69,6 +71,7 @@ public class GamePanel extends JPanel implements Runnable {
     this.setDoubleBuffered(true);
 
     this.waitButton = new WaitButton(screenWidth, screenHeight);
+    this.retryButton = new RetryButton(screenWidth, screenHeight);
 
     // allows the panel to receive key inputs
     this.setFocusable(true);
@@ -79,12 +82,16 @@ public class GamePanel extends JPanel implements Runnable {
       public void mouseMoved(MouseEvent e) {
         activityLog.handleMouseMove(e.getX(), e.getY(), screenHeight);
         waitButton.update(e.getX(), e.getY());
+        if (player != null && player.isDead) {
+          retryButton.update(e.getX(), e.getY());
+        }
       }
 
       @Override
       public void mouseExited(MouseEvent e) {
         activityLog.handleMouseMove(-1, -1, screenHeight);
         waitButton.update(-1, 1);
+        retryButton.update(-1, -1);
       }
 
       @Override
@@ -94,6 +101,13 @@ public class GamePanel extends JPanel implements Runnable {
 
       @Override
       public void mousePressed(MouseEvent e) {
+        if (player != null && player.isDead) {
+          if (retryButton.isClicked(e.getX(), e.getY())) {
+            resetGame();
+            return;
+          }
+        }
+
         if (gameState == GameState.PLAYER_TURN && !actionInProgress) {
           handleMouseClick(e.getX(), e.getY());
         }
@@ -106,16 +120,32 @@ public class GamePanel extends JPanel implements Runnable {
     // Tile must be initialised before entities so the map is ready at first frame
     tile = new TileManager(this);
 
-    player = new Player(this, keyHandler);
-    entities.add(player);
-    entities.add(new Skeleton(this, tileSize * 5, tileSize * 5, 1, 0));
-    entities.add(new Rat(this, tileSize * 8, tileSize * 2, 0, 1));
-    entities.add(new Rat(this, tileSize * 10, tileSize * 10, -1, -1));
+    initEntities();
 
     // Initialize potion manager
     potionManager = new PotionManager(this);
 
     addLogMessage("Welcome to UPH Dungeon!", Color.YELLOW);
+  }
+
+  private void initEntities() {
+    entities.clear();
+    player = new Player(this, keyHandler);
+    entities.add(player);
+    entities.add(new Skeleton(this, tileSize * 5, tileSize * 5, 1, 0));
+    entities.add(new Rat(this, tileSize * 8, tileSize * 2, 0, 1));
+    entities.add(new Rat(this, tileSize * 10, tileSize * 10, -1, -1));
+  }
+
+  public void resetGame() {
+    activityLog.clear();
+    initEntities();
+    potionManager = new PotionManager(this);
+    gameState = GameState.START_ROUND;
+    actionInProgress = false;
+    turnIndex = 0;
+    turnOrder.clear();
+    addLogMessage("Game Restarted!", Color.YELLOW);
   }
 
   public void handleMouseClick(int mouseX, int mouseY) {
@@ -307,6 +337,7 @@ public class GamePanel extends JPanel implements Runnable {
 
     if (player.isDead) {
       deathMessage.draw(g2, screenWidth, screenHeight);
+      retryButton.draw(g2);
     }
 
     g2.dispose();
