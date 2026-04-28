@@ -35,6 +35,11 @@ public class ActivityLog {
     scrollStatus = 0;
   }
 
+  public void clear() {
+    activityLog.clear();
+    scrollStatus = 0;
+  }
+
   public void handleMouseMove(int mouseX, int mouseY, int screenHeight) {
     int logPosY = screenHeight - logHeight - 10;
     isHovered = (mouseX >= logPosX && mouseX <= logPosX + logWidth && mouseY >= logPosY
